@@ -61,12 +61,29 @@ async function signin(req, res) {
 };
 
 async function generateRefreshToken(email, role) {
-  let refresh_token = await redisClient.get(email);
-  if(!refresh_token) {
-    refresh_token = jwt.sign({ email, role }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_TIME });
-     // set refresh token in Redis
-     await redisClient.set(email, refresh_token);
+  try {
+    let refresh_token = await redisClient.get(email);
+    if(!refresh_token) {
+      refresh_token = await signRefreshToken(email, role)
+    }
+
+    const decoded = jwt.verify(refresh_token, refreshSecret)    
+    if(!decoded) {
+      refresh_token = await signRefreshToken(email, role)
+    }
+    return refresh_token;
+  } catch (err) {    
+    if (err.message === 'jwt expired'){
+      const refresh_token = await signRefreshToken(email, role)
+      return refresh_token;
+    }
   }
+}
+
+async function signRefreshToken(email, role) {
+  const refresh_token = jwt.sign({ email, role }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_TIME });
+  // set refresh token in Redis
+  await redisClient.set(email, refresh_token);
   return refresh_token;
 }
 
@@ -153,9 +170,18 @@ async function transfer(req, res) {
           const updatedAcctFrom = await loggedInUserAccountDetails.save()
           const updatedAcctTo = await acctTo.save() 
          
-          if(updatedAcctFrom && updatedAcctTo){
-            return res.status(200).send({ message: 'Transaction Successful' });
+          if(!updatedAcctFrom){
+            await Transaction.deleteOne({_id: successfulTranaction._id})
+            return res.status(400).send({ message: 'Transaction error, please try again' });
+          } 
+          if(!updatedAcctTo){
+            await Transaction.deleteOne({_id: successfulTranaction._id})
+            loggedInUserAccountDetails.balance += amount
+            await loggedInUserAccountDetails.save()
+            return res.status(400).send({ message: 'Transaction error, please try again' });
           }
+
+          return res.status(200).send({ message: 'Transaction Successful' });
         }
       } else {
         return res.status(404).send({ message: 'Account does not exist' });

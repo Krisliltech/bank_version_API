@@ -19,7 +19,6 @@ const UserSchema = new Mongoose.Schema({
   },
   password: {
     type: String,
-    // select: false,
     required: true
   },
   role: {

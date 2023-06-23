@@ -16,7 +16,7 @@ const authenticateUser = async (req, res, next) => {
     req.token = token;
 
     let refresh_token = await redisClient.get('BL_' + decoded.email);
-    if(refresh_token && refresh_token.token === token ) return res.status(401).send({ error: "Invalid token"}); 
+    if(refresh_token && refresh_token === token ) return res.status(401).send({ error: "Invalid token"}); 
     next();
   } catch (error) {
     return res.status(401).send({ message: "Unable To Authenticate User.", data: error});

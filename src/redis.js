@@ -7,10 +7,6 @@ const redisClient = redis.createClient({
 });
 
 redisClient.connect();
-// (async () => {
-//     // Connect to redis server
-//     await redisClient.connect();
-// })();
 
 redisClient.on('error', err => {
   console.error(err);
@@ -20,5 +16,5 @@ redisClient.on('connect', ()=> {
 });
 
 module.exports = {
-    redisClient
+  redisClient
 };
